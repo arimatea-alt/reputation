@@ -1,0 +1,210 @@
+--====== CONFIG ======--
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+
+local QUEST_POS = Vector3.new(-1560.9775390625, 22.86717414855957, 825.9608154296875)
+local PATROL_POINTS = {
+    Vector3.new(-1427.0399169921875, 3.395440101623535, 381.5129699707031),
+    Vector3.new(-1401.8236083984375, 2.2898659706115723, -662.8291625976562),
+    Vector3.new(-410.2884521484375, 9.776947975158691, -748.5504760742188),
+}
+
+local ENEMY_NAME = "Possessed Rider Lv.90" -- workspace.Lives[ENEMY_NAME]
+
+local DialogueRemote = ReplicatedStorage:WaitForChild("Remote"):WaitForChild("Event"):WaitForChild("Dialogue")
+local function fireDialogue(args)
+    DialogueRemote:FireServer(unpack(args))
+end
+
+--====== FUNGSI DASAR ======--
+local function getHRP()
+    local char = player.Character or player.CharacterAdded:Wait()
+    return char:WaitForChild("HumanoidRootPart")
+end
+
+local function tweenTo(pos, time_)
+    local hrp = getHRP()
+    local info = TweenInfo.new(time_ or 2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(hrp, info, {CFrame = CFrame.new(pos)})
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+local function getEnemy()
+    local lives = workspace:FindFirstChild("Lives")
+    if not lives then return nil end
+    return lives:FindFirstChild(ENEMY_NAME)
+end
+
+--====== AUTO ATTACK ======--
+local function fireCombat(argsTable)
+    local char = player.Character or player.CharacterAdded:Wait()
+    local handler = char:WaitForChild("PlayerHandler"):WaitForChild("HandlerEvent")
+    handler:FireServer(unpack(argsTable))
+end
+
+local function heavyAttack()
+    local args = {
+        {
+            CombatAction = true,
+            AttackType = "Down",
+            HeavyAttack = true,
+            MouseData = CFrame.new(-257.47674560546875, 9.776947975158691, -862.2208251953125, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+        }
+    }
+    fireCombat(args)
+end
+
+local function basicAttack()
+    local args = {
+        {
+            CombatAction = true,
+            LightAttack = true,
+            MouseData = CFrame.new(-257.47674560546875, 9.776947975158691, -862.2208251953125, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+        }
+    }
+    fireCombat(args)
+end
+
+local function skillE()
+    local args = {
+        {
+            Skill = true,
+            AttackType = "Down",
+            Key = "E",
+            MouseData = CFrame.new(-257.47674560546875, 9.776947975158691, -862.2208251953125, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+        }
+    }
+    fireCombat(args)
+end
+
+local function skillR()
+    local args = {
+        {
+            Skill = true,
+            AttackType = "Down",
+            Key = "R",
+            MouseData = CFrame.new(-262.78973388671875, 5.367349624633789, -859.2238159179688, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+        }
+    }
+    fireCombat(args)
+end
+
+local function skillV()
+    local args = {
+        {
+            Skill = true,
+            AttackType = "Down",
+            Key = "V",
+            MouseData = CFrame.new(-374.3337707519531, 10.645843505859375, -631.1005859375, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+        }
+    }
+    fireCombat(args)
+end
+
+-- urutan: heavy, E, heavy, basic, R, heavy, V lalu ulang
+local function autoAttackCycle(enemy)
+    while enemy and enemy.Parent == workspace.Lives do
+        heavyAttack()
+        task.wait(0.25)
+        skillE()
+        task.wait(0.25)
+        heavyAttack()
+        task.wait(0.25)
+        basicAttack()
+        task.wait(0.25)
+        skillR()
+        task.wait(0.25)
+        heavyAttack()
+        task.wait(0.25)
+        skillV()
+        task.wait(0.4)
+        enemy = getEnemy()
+    end
+end
+
+--====== PROSES QUEST + FARM ======--
+local function takeQuest()
+    tweenTo(QUEST_POS, 2)
+    -- klik ClickDetector
+    local npcFolder = workspace:WaitForChild("NPC")
+    local arkRep = npcFolder:WaitForChild("ARKReplicator")
+    local cd = arkRep:WaitForChild("ClickDetector")
+    fireclickdetector(cd)
+
+    -- pilih quest
+    fireDialogue({
+        {
+            Choice = "[ Desire Games ]"
+        }
+    })
+
+    -- tutup dialog
+    fireDialogue({
+        {
+            Exit = true
+        }
+    })
+end
+
+local function turnInQuest()
+    tweenTo(QUEST_POS, 2)
+    local npcFolder = workspace:WaitForChild("NPC")
+    local arkRep = npcFolder:WaitForChild("ARKReplicator")
+    local cd = arkRep:WaitForChild("ClickDetector")
+    fireclickdetector(cd)
+
+    fireDialogue({
+        {
+            Choice = "Completed it."
+        }
+    })
+
+    fireDialogue({
+        {
+            Exit = true
+        }
+    })
+end
+
+local function patrolUntilEnemy()
+    while true do
+        -- cek dulu apakah enemy sudah spawn
+        local enemy = getEnemy()
+        if enemy then
+            return enemy
+        end
+
+        -- kalau belum, keliling 3 titik
+        for i, pos in ipairs(PATROL_POINTS) do
+            tweenTo(pos, 2)
+            task.wait(0.2)
+            enemy = getEnemy()
+            if enemy then
+                return enemy
+            end
+        end
+    end
+end
+
+--====== MAIN LOOP ======--
+task.spawn(function()
+    while true do
+        -- 1. Ambil quest
+        takeQuest()
+
+        -- 2. Patrol sampai musuh muncul
+        local enemy = patrolUntilEnemy()
+
+        -- 3. Attack loop
+        autoAttackCycle(enemy)
+
+        -- 4. Turn in quest
+        turnInQuest()
+
+        -- 5. Ulang dari awal
+        task.wait(0.5)
+    end
+end)
