@@ -25,12 +25,11 @@ local function getHRP()
     return char:WaitForChild("HumanoidRootPart")
 end
 
-local function tweenTo(pos, time_)
+-- WARP / TELEPORT + DELAY 3 DETIK
+local function warpTo(pos)
     local hrp = getHRP()
-    local info = TweenInfo.new(time_ or 2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
-    local tween = TweenService:Create(hrp, info, {CFrame = CFrame.new(pos)})
-    tween:Play()
-    tween.Completed:Wait()
+    hrp.CFrame = CFrame.new(pos)
+    task.wait(3) -- jeda 3 detik setiap selesai teleport
 end
 
 local function getEnemy()
@@ -57,7 +56,7 @@ local function heavyAttack()
             CombatAction = true,
             AttackType = "Down",
             HeavyAttack = true,
-            MouseData = CFrame.new(-257.47, 9.77, -862.22, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+            MouseData = CFrame.new(-257.47, 9.77, -862.22, 1,0,0, 0,1,0, 0,0,1)
         }
     }
     fireCombat(args)
@@ -68,7 +67,7 @@ local function basicAttack()
         {
             CombatAction = true,
             LightAttack = true,
-            MouseData = CFrame.new(-257.47, 9.77, -862.22, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+            MouseData = CFrame.new(-257.47, 9.77, -862.22, 1,0,0, 0,1,0, 0,0,1)
         }
     }
     fireCombat(args)
@@ -80,7 +79,7 @@ local function skillE()
             Skill = true,
             AttackType = "Down",
             Key = "E",
-            MouseData = CFrame.new(-257.47, 9.77, -862.22, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+            MouseData = CFrame.new(-257.47, 9.77, -862.22, 1,0,0, 0,1,0, 0,0,1)
         }
     }
     fireCombat(args)
@@ -92,7 +91,7 @@ local function skillR()
             Skill = true,
             AttackType = "Down",
             Key = "R",
-            MouseData = CFrame.new(-262.78, 5.36, -859.22, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+            MouseData = CFrame.new(-262.78, 5.36, -859.22, 1,0,0, 0,1,0, 0,0,1)
         }
     }
     fireCombat(args)
@@ -104,7 +103,7 @@ local function skillV()
             Skill = true,
             AttackType = "Down",
             Key = "V",
-            MouseData = CFrame.new(-374.33, 10.64, -631.10, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+            MouseData = CFrame.new(-374.33, 10.64, -631.10, 1,0,0, 0,1,0, 0,0,1)
         }
     }
     fireCombat(args)
@@ -136,11 +135,9 @@ local function startMagnet()
 
         local hrp = getHRP()
 
-        -- offset 5 stud di depan enemy (player menghadap enemy)
         local offset = enemyRoot.CFrame.LookVector * 5
         local targetCF = CFrame.new(enemyRoot.Position + offset, enemyRoot.Position)
 
-        -- “magnet” = langsung set / lerp ringan
         hrp.CFrame = hrp.CFrame:Lerp(targetCF, 0.5)
     end)
 end
@@ -153,7 +150,6 @@ local function stopMagnet()
     end
 end
 
--- Loop serangan: dibiarkan terpisah dari magnet
 local function attackEnemyLoop()
     while true do
         local lives = workspace:FindFirstChild("Lives")
@@ -162,7 +158,6 @@ local function attackEnemyLoop()
             break
         end
 
-        -- combo: heavy, E, heavy, basic, R, heavy, V
         heavyAttack()
         task.wait(0.25)
 
@@ -194,9 +189,9 @@ local function attackEnemyLoop()
     end
 end
 
---====== PROSES QUEST + FARM ======--
+--====== PROSES QUEST + FARM (WARP + DELAY) ======--
 local function takeQuest()
-    tweenTo(QUEST_POS, 2)
+    warpTo(QUEST_POS)
 
     local npcFolder = workspace:WaitForChild("NPC")
     local arkRep = npcFolder:WaitForChild("ARKReplicator")
@@ -217,7 +212,7 @@ local function takeQuest()
 end
 
 local function turnInQuest()
-    tweenTo(QUEST_POS, 2)
+    warpTo(QUEST_POS)
 
     local npcFolder = workspace:WaitForChild("NPC")
     local arkRep = npcFolder:WaitForChild("ARKReplicator")
@@ -246,13 +241,11 @@ local function patrolUntilEnemy()
         end
 
         for _, pos in ipairs(PATROL_POINTS) do
-            tweenTo(pos, 2)
-            task.wait(0.2)
-
-            enemy = getEnemy()
-            lives = workspace:FindFirstChild("Lives")
-            if enemy and lives and enemy.Parent == lives then
-                return enemy
+            warpTo(pos)
+            local enemy2 = getEnemy()
+            local lives2 = workspace:FindFirstChild("Lives")
+            if enemy2 and lives2 and enemy2.Parent == lives2 then
+                return enemy2
             end
         end
     end
@@ -270,16 +263,16 @@ task.spawn(function()
         -- 3. Nyalakan magnet ke enemy
         startMagnet()
 
-        -- 4. Auto attack sampai enemy mati (magnet tetap jalan)
+        -- 4. Auto attack sampai enemy mati
         attackEnemyLoop()
 
-        -- 5. Matikan magnet ketika enemy sudah mati
+        -- 5. Matikan magnet
         stopMagnet()
 
         -- 6. Turn in quest
         turnInQuest()
 
-        -- 7. Ulang dari awal
+        -- 7. Ulang
         task.wait(0.5)
     end
 end)
